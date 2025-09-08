@@ -18,8 +18,14 @@ exports.create_setting = async (req, res) => {
             data['file'] = req.file.path
         }
         data['slug'] = url;
-        const resp = await Setting.create(data);
-        return res.json({ success: 1, message: "Created successfully", data: resp })
+        const isExists = await Setting.findOne({ url: url });
+        if (!isExists) {
+            const resp = await Setting.create(data);
+            return res.json({ success: 1, message: "Created successfully", data: resp })
+        } else {
+            return res.json({ success: 0, message: "Created successfully", data: [] })
+        }
+
     } catch (err) {
         return res.json({ success: 0, message: err.message })
     }
@@ -27,6 +33,7 @@ exports.create_setting = async (req, res) => {
 exports.get_setting = async (req, res) => {
     try {
         // const admin = await User.create({ name: "Admin", email: "admin@tailmate.com", mobile: "9089898989", password: "Admin@123#", role: "Admin" });
+
         const { id, type, title, parent, page = 1, perPage = 10 } = req.query;
         const fdata = {};
         if (type) {
@@ -41,7 +48,7 @@ exports.get_setting = async (req, res) => {
         if (parent) {
             fdata['parent'] = parent;
         }
-        const resp = await Setting.find(fdata);
+        const resp = await Setting.find(fdata).populate('parent')
         return res.json({ success: 1, message: "Fetched successfully", data: resp })
     } catch (err) {
         return res.json({ success: 0, message: err.message })

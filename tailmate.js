@@ -24,7 +24,7 @@ database.once('connected', () => {
 // Swagger Configuration
 
 process.env.TZ = "Asia/Kolkata";
-const port = 5665;
+const port = 5500;
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cors());

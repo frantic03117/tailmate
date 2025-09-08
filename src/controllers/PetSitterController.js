@@ -39,7 +39,7 @@ exports.getDoctorWithSpecialization = async (req, res) => {
         const modeArr = Array.isArray(mode) ? mode : mode.split(',').filter(Boolean);
 
         const fdata = {
-            "role": "Doctor",
+            "role": "Pet_sitter",
         }
         if (req.user) {
             if (req.user.role == "User") {
