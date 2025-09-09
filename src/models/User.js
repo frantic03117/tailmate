@@ -69,13 +69,14 @@ const schema = new Schema({
                 ref: "Setting",
                 default: null
             },
-            online_fee: {
-                type: Number,
+            fee_type: {
+                type: Schema.Types.ObjectId,
+                ref: "Setting",
                 default: null
             },
-            offline_fee: {
+            fee: {
                 type: Number,
-                default: null
+                default: 0
             }
         }
     ],
@@ -122,10 +123,14 @@ const schema = new Schema({
         }
     },
     state: {
-        type: String,
+        type: Schema.Types.ObjectId,
+        ref: "Setting",
+        default: null
     },
     city: {
-        type: String,
+        type: Schema.Types.ObjectId,
+        ref: "Setting",
+        default: null
     },
     pincode: {
         type: String,

@@ -56,6 +56,7 @@ const servicePagerouter = require('./src/routes/ServicePageRoute');
 const medicalRoute = require('./src/routes/medicaltestRoutes');
 const vkeyroute = require('./src/routes/VariantKeyRoutes');
 const vroutes = require('./src/routes/VoucherRoutes');
+const proutes = require('./src/routes/PetRoutes');
 app.use('/api/v1/user', userroutes);
 app.use('/api/v1/pet-sitter', doctorroutes);
 app.use('/api/v1/admin', adminroutes);
@@ -81,7 +82,7 @@ app.use('/api/v1/service-page', servicePagerouter);
 app.use('/api/v1/ear-test', medicalRoute);
 app.use('/api/v1/form-keys', vkeyroute);
 app.use('/api/v1/voucher', vroutes);
-
+app.use('/api/v1/pet', proutes);
 
 app.get('/', (req, res) => res.send({
     success: 1,

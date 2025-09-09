@@ -3,7 +3,6 @@ const OtpModel = require("../models/Otp");
 
 const SECRET_KEY = process.env.SECRET_KEY ?? "frantic@hearzapp#6887";
 const jwt = require('jsonwebtoken');
-const PetSitterSpecialization = require("../models/PetSitterSpecialization");
 async function generateUniqueSlug(name) {
     const baseSlug = name
         .toLowerCase()
@@ -147,15 +146,12 @@ exports.update_profile = async (req, res) => {
         }
         if (req.body.category) {
             const ctg = JSON.parse(req.body.category);
-            data['category'] = ctg.map(itm => itm._id);
-            const parsedCategories = JSON.parse(req.body.category);
-            data['category_fee'] = parsedCategories.map(cat => ({
-                category: cat._id,
-                online_fee: cat.online_fee || 0,
-                offline_fee: cat.offline_fee || 0
-            }));
+            data['category'] = ctg;
         }
-
+        if (req.body.category_fee) {
+            const ctg = JSON.parse(req.body.category_fee);
+            data['category_fee'] = ctg;
+        }
         if (req.files?.profile_image) {
             data['profile_image'] = req.files.profile_image[0].path
         }
@@ -292,14 +288,7 @@ exports.store_profile = async (req, res) => {
         if (req.body.city) {
             slug = role + "-" + slug + "-in-" + req.body.city;
         }
-        // if (!req.user) {
-        //     const checkIsMobileVerified = await OtpModel.findOne({ mobile: mobile, is_verified: true });
-        //     if (!checkIsMobileVerified) {
-        //         return res.json({ success: 0, message: "Mobile number is not verified" });
-        //     }
-        // }
-        // const ctg = JSON.parse(req.body.category);
-        // return res.json({ success: 0, message: ctg.map(itm => itm._id) })
+
         const isMobileExists = await User.findOne({ mobile: mobile });
         if (mobile.toString().length != 10) {
             return res.json({ success: 0, message: "Mobile is not valid" })
@@ -333,13 +322,11 @@ exports.store_profile = async (req, res) => {
         }
         if (req.body.category) {
             const ctg = JSON.parse(req.body.category);
-            data['category'] = ctg.map(itm => itm._id);
-            const parsedCategories = JSON.parse(req.body.category);
-            data['category_fee'] = parsedCategories.map(cat => ({
-                category: cat._id,
-                online_fee: cat.online_fee || 0,
-                offline_fee: cat.offline_fee || 0
-            }));
+            data['category'] = ctg;
+        }
+        if (req.body.category_fee) {
+            const ctg = JSON.parse(req.body.category_fee);
+            data['category_fee'] = ctg;
         }
         if (req.files) {
             if (req.files?.profile_image) {

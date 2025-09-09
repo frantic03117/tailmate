@@ -55,25 +55,14 @@ exports.getDoctorWithSpecialization = async (req, res) => {
         } else {
             fdata['is_verified'] = true;
         }
-        if (clinic && mongoose.Types.ObjectId.isValid(clinic)) {
-            const findClinic = await User.findOne({ _id: clinic });
-            if (findClinic) {
-                fdata['clinic'] = clinic;
-            }
-        }
+
         if (id) {
             fdata['_id'] = id
         }
         if (category) {
             fdata['category'] = { $in: category.split(',') }
         }
-        if (clinic_slug) {
-            const findClinic = await User.findOne({ slug: clinic_slug });
-            if (!findClinic) {
-                return res.json({ success: 0, message: "Clinic not found", data: [] });
-            }
-            fdata['clinic'] = findClinic._id;
-        }
+
         if (req.user) {
             if (req.user.role == "Clinic") {
                 fdata['clinic'] = req.user._id
@@ -116,7 +105,17 @@ exports.getDoctorWithSpecialization = async (req, res) => {
         const skip = (page - 1) * perPage;
 
 
-        const doctors = await User.find(fdata).populate('category').populate('category_fee.category').populate('clinic').sort({ [sortField]: sortOrder }).skip(skip).limit(perPage);
+        const doctors = await User.find(fdata).populate([
+            {
+                path: 'category'
+            },
+            {
+                path: "state"
+            },
+            {
+                path: "city"
+            }
+        ]).populate('category_fee.category').populate('category_fee.fee_type').sort({ [sortField]: sortOrder }).skip(skip).limit(perPage);
         const pagination = { perPage, page, totalPages, totalDocs }
         return res.json({ success: 1, message: "List of doctors", data: doctors, pagination, fdata, sortOrder })
     } catch (error) {

@@ -13,7 +13,6 @@ const schema = new Schema({
         ref: "User",
         default: null
     },
-
     cartids: [{
         type: Schema.Types.ObjectId,
         ref: "Cart"
