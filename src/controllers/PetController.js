@@ -20,8 +20,13 @@ exports.createPet = async (req, res) => {
     try {
         const errors = validatePetData(req.body);
         if (errors.length > 0) return res.status(400).json({ errors });
+        const petData = { ...req.body }
+        if (req.files && req.files.length > 0) {
+            petData.pet_images = req.files.map(file => file.path); // store file paths
+        }
 
-        const pet = new Pet(req.body);
+        const pet = new Pet(petData);
+
         const savedPet = await pet.save();
         res.status(201).json({ data: savedPet, success: 1, message: "Creted successfully" });
     } catch (error) {
@@ -32,12 +37,15 @@ exports.updatePet = async (req, res) => {
     try {
         const errors = validatePetData(req.body);
         if (errors.length > 0) return res.status(400).json({ errors });
-
-        const updatedPet = await Pet.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        if (!updatedPet) return res.status(404).json({ message: "Pet not found" });
-        res.status(200).json(updatedPet);
+        const petData = { ...req.body }
+        if (req.files && req.files.length > 0) {
+            petData.pet_images = req.files.map(file => file.path); // store file paths
+        }
+        const updatedPet = await Pet.findByIdAndUpdate(req.params.id, petData, { new: true });
+        if (!updatedPet) return res.status(404).json({ success: 0, message: "Pet not found" });
+        res.status(200).json({ data: updatedPet, success: 1, message: "updated successfully" });
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        res.status(400).json({ success: 0, message: error.message });
     }
 };
 exports.deletePet = async (req, res) => {
@@ -51,7 +59,23 @@ exports.deletePet = async (req, res) => {
 };
 exports.getAllPets = async (req, res) => {
     try {
-        // Read query params, set default values
+        const { pet_parent, name, breed, gender, type } = req.query;
+        let fdata = {};
+        if (pet_parent) {
+            fdata['pet_parent'] = pet_parent;
+        }
+        if (name) {
+            fdata['name'] = { $regex: name, $options: "i" };
+        }
+        if (breed) {
+            fdata['breed'] = { $regex: breed, $options: "i" };
+        }
+        if (gender) {
+            fdata['gender'] = { $regex: gender, $options: "i" };
+        }
+        if (type) {
+            fdata['type'] = type;
+        }
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
@@ -60,14 +84,16 @@ exports.getAllPets = async (req, res) => {
         const total = await Pet.countDocuments();
 
         // Fetch pets with pagination
-        const pets = await Pet.find().skip(skip).limit(limit);
+        const pets = await Pet.find(fdata).populate('pet_parent').populate('type').skip(skip).limit(limit);
 
         res.status(200).json({
-            total,
-            page,
-            pages: Math.ceil(total / limit),
-            limit,
-            pets,
+            pagination: {
+                total,
+                page,
+                totalPages: Math.ceil(total / limit),
+                limit,
+            },
+            data: pets,
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

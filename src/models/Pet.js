@@ -6,13 +6,15 @@ const petSchema = new mongoose.Schema({
         ref: "User"
     },
     name: { type: String, },
-    type: { type: String, },
+    type: {
+        type: Schema.Types.ObjectId,
+        ref: "Setting"
+    },
     breed: { type: String },
+    gender: { type: String },
     age: { type: Number },
     age_unit: {
-        type: String,
-        enum: ['Days', 'Months', 'Years'],
-        default: "Months"
+        type: String
     },
     weight: { type: Number },
     about_pet: { type: String },

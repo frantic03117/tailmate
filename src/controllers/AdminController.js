@@ -1,14 +1,14 @@
-const Product = require("../models/Product");
+const Pet = require("../models/Pet");
 const User = require("../models/User")
 
 exports.dashboard = async (req, res) => {
     try {
-        const clinics = await User.countDocuments({ role: "Clinic" });
-        const doctors = await User.countDocuments({ role: "Doctor" });
+
+        const pet_sitters = await User.countDocuments({ role: "Pet_Sitter" });
         const users = await User.countDocuments({ role: "User" });
-        const products = await Product.countDocuments({ isActive: true });
+        const pets = await Pet.countDocuments();
         const data = {
-            clinics, doctors, users, products
+            "Pet Sitter": pet_sitters, users, pets
         }
         return res.json({ success: 1, data, message: "Dashboard" });
     } catch (err) {
