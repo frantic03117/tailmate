@@ -12,58 +12,143 @@ const razorpay_instance = new Razorpay({
     key_secret: secretid
 });
 
+
+
+const { createPetForUser } = require("../helper/commonHelper");
+
 exports.create_booking = async (req, res) => {
-    const userId = req.user._id;
-    const { pet_sitter, start_at, end_at, mode, service, user_id, user_data, pets, pet_data } = req.body;
-    if (!pets || !pet_data) {
-        return res.json({ success: 0, message: "Pet is required" });
-    }
-    if (!service) {
-        return res.json({ success: 0, message: 'Service is required' })
-    }
-
-    if (req.user.role == "Admin") {
-        if (!user_data || !user_id) {
-            return res.json({ success: 0, message: "User is required" })
-        }
-    }
-
-    if (req.user.role == "User") {
-
-        const data = {
+    try {
+        const userId = req.user._id;
+        const {
+            pet_sitter,
+            start_at,
+            end_at,
+            mode,
             service,
-            user: userId,
+            user_id,
+            user_data,
+            pets,
+            pet_data
+        } = req.body;
+
+        // Validate service
+        if (!service) {
+            return res.status(400).json({ success: 0, message: "Service is required" });
+        }
+
+        // Validate pets or pet_data
+        if ((!pets || pets.length === 0) && !pet_data) {
+            return res.status(400).json({ success: 0, message: "At least one pet is required" });
+        }
+
+        let finalUserId = userId;
+
+        // If admin is creating booking
+        if (req.user.role === "Admin") {
+            if (!user_id && !user_data) {
+                return res.status(400).json({
+                    success: 0,
+                    message: "User is required for Admin booking"
+                });
+            }
+
+            if (user_id) {
+                finalUserId = user_id;
+            } else {
+                const parsedUser =
+                    typeof user_data === "string" ? JSON.parse(user_data) : user_data;
+                const newUser = await User.create(parsedUser);
+                finalUserId = newUser._id;
+            }
+        }
+
+        // Collect pet IDs
+        let petIds = [];
+
+        // Case 1: pets already exist (IDs passed)
+        if (pets) {
+            let parsedPets = typeof pets === "string" ? JSON.parse(pets) : pets;
+            if (Array.isArray(parsedPets) && parsedPets.length > 0) {
+                petIds = parsedPets;
+            }
+        }
+
+        // Case 2: new pet_data provided
+        if (pet_data) {
+            let parsedPetData = [];
+            try {
+                parsedPetData =
+                    typeof pet_data === "string" ? JSON.parse(pet_data) : pet_data;
+            } catch (err) {
+                return res
+                    .status(400)
+                    .json({ success: 0, message: "Invalid pet_data JSON" });
+            }
+
+            if (!Array.isArray(parsedPetData)) {
+                return res.status(400).json({
+                    success: 0,
+                    message: "pet_data must be an array"
+                });
+            }
+
+            // Attach uploaded files (if any) to corresponding pets
+            if (req.files && req.files.length > 0) {
+                parsedPetData.forEach((pd, idx) => {
+                    const filesForPet = req.files.filter((f) =>
+                        f.fieldname.startsWith(`pet_files_${idx}_`)
+                    );
+                    pd.files = filesForPet;
+                });
+            }
+
+            // Save each pet
+            for (const pd of parsedPetData) {
+                if (typeof pd !== "object") {
+                    return res.status(400).json({
+                        success: 0,
+                        message: "Each pet_data item must be an object"
+                    });
+                }
+
+                const savedPet = await createPetForUser(
+                    pd,
+                    pd.files || [],
+                    finalUserId
+                );
+                petIds.push(savedPet._id);
+            }
+        }
+
+        // Create booking
+        const bookingData = {
+            service,
+            user: finalUserId,
             mode,
             pet_sitter,
-            pets: JSON.parse(pets),
-            start_at: start_at,
-            end_at: end_at,
-            status: "Pending",
-        }
-        const booking = new Booking(data);
+            pets: petIds.map((id) => ({ pet: id })),
+            start_at,
+            end_at,
+            status: "Pending"
+        };
+
+        const booking = new Booking(bookingData);
         await booking.save();
-        return res.json({ success: 1, message: "Created successfully", data: booking });
+
+        return res.status(201).json({
+            success: 1,
+            message: "Booking created successfully",
+            data: booking
+        });
+    } catch (error) {
+        console.error("Booking creation error:", error);
+        return res
+            .status(500)
+            .json({ success: 0, message: error.message || "Server error" });
     }
-    if (req.user.role == "Admin") {
-        let userid;
-        if (!user_id) {
-            userid = user_id
-        } else {
-            const newuser = await User.create(user_data);
-            userid = newuser._id;
-        }
-        let petids;
-        if (!pets) {
-            const petdata = JSON.parse(pet_data);
-            petdata.map(async pd => {
-
-            })
-        }
-
-    }
-
-
 };
+
+
 exports.get_booking = async (req, res) => {
     try {
         // await Booking.deleteMany({});
