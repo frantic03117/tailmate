@@ -3,6 +3,12 @@ const counterSchema = new Schema({
     _id: { type: String, required: true },
     seq: { type: Number, default: 0 }
 });
+const PetsSchema = new Schema({
+    pet: {
+        type: Schema.Types.ObjectId,
+        ref: "Pet"
+    }
+}, { _id: false });
 
 const Counter = model("Counter", counterSchema);
 const bookingSchema = new Schema({
@@ -13,7 +19,7 @@ const bookingSchema = new Schema({
         type: String
     },
     booking_id: {
-        type: String
+        type: Number
     },
     bill_no: {
         type: String
@@ -36,39 +42,30 @@ const bookingSchema = new Schema({
     },
     mode: {
         type: String,
-        enum: ['Home', 'Clinic', 'Online'],
-        default: "Clinic"
+        enum: ['Pet_Parent_location', 'Pet_Sitter_location'],
+        default: "Pet_Sitter_location"
     },
-    clinic: {
+
+    pet_sitter: {
         type: Schema.Types.ObjectId,
         ref: "User",
         default: null
     },
-    doctor: {
-        type: Schema.Types.ObjectId,
-        ref: "User",
-        default: null
-    },
-    booked_slot: {
-        type: Schema.Types.ObjectId,
-        ref: "Slot",
-        default: null
-    },
-    language: {
-        type: String
-    },
+
+
     start_at: {
         type: Date,
     },
     end_at: {
         type: Date,
     },
+    pets: [PetsSchema],
     status: {
-        type: String
-    },
-    address: {
         type: String,
+        enum: ["Success", "Pending", "Cancelled"],
+        default: "Pending"
     },
+
     gateway_order_id: { type: String },
     payment_gateway_request: {
         type: Schema.Types.Mixed,

@@ -1,3 +1,4 @@
+const { createPetForUser, removePetImages } = require("../helper/commonHelper");
 const Pet = require("../models/Pet");
 
 
@@ -20,14 +21,19 @@ exports.createPet = async (req, res) => {
     try {
         const errors = validatePetData(req.body);
         if (errors.length > 0) return res.status(400).json({ errors });
-        const petData = { ...req.body }
+        const petData = { ...req.body };
+        let userId;
+        if (req.user.role === "User") {
+            userId = req.user._id;
+        }
+        if (req.user.role == "Admin") {
+            userId = req.body.user;
+        }
         if (req.files && req.files.length > 0) {
             petData.pet_images = req.files.map(file => file.path); // store file paths
         }
 
-        const pet = new Pet(petData);
-
-        const savedPet = await pet.save();
+        const savedPet = await createPetForUser(req.body, req.files, userId);
         res.status(201).json({ data: savedPet, success: 1, message: "Creted successfully" });
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -35,13 +41,22 @@ exports.createPet = async (req, res) => {
 };
 exports.updatePet = async (req, res) => {
     try {
+        const { id } = req.params;
+        const petId = id;
         const errors = validatePetData(req.body);
+        console.log(req.body);
         if (errors.length > 0) return res.status(400).json({ errors });
-        const petData = { ...req.body }
-        if (req.files && req.files.length > 0) {
-            petData.pet_images = req.files.map(file => file.path); // store file paths
+        const petData = { ...req.body };
+        const files = req.files;
+        if (files && files.length > 0) {
+            const newImages = files.map(file => file.path);
+            await Pet.findByIdAndUpdate(
+                petId,
+                { $push: { pet_images: { $each: newImages } } },
+                { new: true }
+            );
         }
-        const updatedPet = await Pet.findByIdAndUpdate(req.params.id, petData, { new: true });
+        const updatedPet = await Pet.findByIdAndUpdate(petId, petData, { new: true });
         if (!updatedPet) return res.status(404).json({ success: 0, message: "Pet not found" });
         res.status(200).json({ data: updatedPet, success: 1, message: "updated successfully" });
     } catch (error) {
@@ -100,3 +115,27 @@ exports.getAllPets = async (req, res) => {
     }
 };
 
+exports.removePetImagesFunc = async (req, res) => {
+    try {
+        const { id } = req.params; // pet ID
+        const { images } = req.body; // array of image paths to remove
+
+        if (!images || !Array.isArray(images) || images.length === 0) {
+            return res.status(400).json({ success: 0, message: "Images array is required" });
+        }
+
+        const updatedPet = await removePetImages(id, images);
+
+        if (!updatedPet) {
+            return res.status(404).json({ success: 0, message: "Pet not found" });
+        }
+
+        res.status(200).json({
+            success: 1,
+            message: "Images removed successfully",
+            data: updatedPet,
+        });
+    } catch (error) {
+        res.status(500).json({ success: 0, message: error.message });
+    }
+};

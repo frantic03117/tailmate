@@ -4,7 +4,6 @@ const moment = require("moment-timezone");
 const User = require("../models/User");
 const Razorpay = require("razorpay");
 const mongoose = require('mongoose');
-// const ObjectId = mongoose.Types.ObjectId;
 require('dotenv').config();
 const keyid = process.env.TEST_KEY_ID;
 const secretid = process.env.TEST_SECRET_KEY;
@@ -15,113 +14,55 @@ const razorpay_instance = new Razorpay({
 
 exports.create_booking = async (req, res) => {
     const userId = req.user._id;
-    const { clinic_id, doctor_id, slot_id, booking_date, service } = req.body;
+    const { pet_sitter, start_at, end_at, mode, service, user_id, user_data, pets, pet_data } = req.body;
+    if (!pets || !pet_data) {
+        return res.json({ success: 0, message: "Pet is required" });
+    }
     if (!service) {
-        return res.json({ success: 0, message: "Service is required", data: [] });
+        return res.json({ success: 0, message: 'Service is required' })
     }
 
-    const slots = await Slot.findOne({ _id: slot_id, clinic: clinic_id, doctor: doctor_id, status: "available" })
-        .lean();
-    const bookinguser = await User.findOne({ _id: userId, role: "User" });
-    if (!bookinguser) {
-        return res.json({ success: 0, message: "User is not registered with us. Please register first." });
-    }
-    const finddoctor = await User.findOne({ _id: doctor_id, clinic: clinic_id, role: "Doctor" });
-    const findService = finddoctor.category.includes(service);
-    if (!findService) {
-        return res.json({ success: 0, message: "Service is required", data: [] });
-    }
-    if (!finddoctor) {
-        return res.json({ success: 0, message: "Doctor not found" });
-    }
-    if (!slots) {
-        return res.status(400).json({ success: 0, message: "Slot not available or already booked" });
-    }
-    const isBlocked = await Slot.findOne({ slot_id: slot_id, date: moment.tz(booking_date, "Asia/Kolkata").startOf("day").utc().toDate() });
-    if (isBlocked) {
-        return res.json({ success: 0, data: [], message: "This slot is already booked" });
+    if (req.user.role == "Admin") {
+        if (!user_data || !user_id) {
+            return res.json({ success: 0, message: "User is required" })
+        }
     }
 
-    // Extract the time part from slot and apply it to the booking_date
-    const slotStart = moment(`${booking_date} ${slots.start_time}`).tz("Asia/Kolkata").format("HH:mm");
-    const slotEnd = moment(`${booking_date} ${slots.end_time}`).tz("Asia/Kolkata").format("HH:mm");
-    const start_at = moment.tz(`${booking_date} ${slotStart}`, "YYYY-MM-DD HH:mm", "Asia/Kolkata").utc().toDate();
-    const end_at = moment.tz(`${booking_date} ${slotEnd}`, "YYYY-MM-DD HH:mm", "Asia/Kolkata").utc().toDate();
-    // return res.json({ start_at, end_at });
-    const consult_amount = finddoctor?.consultation_charge ?? 2000;
-    const totalDocs = await Booking.countDocuments();
-    const bdata = {
-        request_id: parseInt(totalDocs) + 1,
-        clinic: clinic_id,
-        mode: req.body.mode ?? "Online",
-        user: userId,
-        doctor: doctor_id,
-        service: service,
-        booking_date: moment.tz(booking_date, "Asia/Kolkata").startOf("day").utc().toDate(),
-        start_at,
-        end_at,
-        consultation_charge: consult_amount,
-        duration: (end_at.getTime() - start_at.getTime()) / 60000,
-        status: "pending"
-    };
-    const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    const parsedDate = new Date(booking_date);
-    const weekdayname = weekdays[parsedDate.getDay()];
+    if (req.user.role == "User") {
 
-    const blockdata = {
-        clinic: clinic_id,
-        weekdayName: weekdayname,
-        status: "blocked",
-        "doctor": doctor_id,
-        "slot_id": slots._id,
-        service: service,
-        date: moment.tz(booking_date, "Asia/Kolkata").startOf("day").utc().toDate(),
-        start_time: slots.start_time,
-        end_time: slots.end_time,
-        createdAt: new Date()
+        const data = {
+            service,
+            user: userId,
+            mode,
+            pet_sitter,
+            pets: JSON.parse(pets),
+            start_at: start_at,
+            end_at: end_at,
+            status: "Pending",
+        }
+        const booking = new Booking(data);
+        await booking.save();
+        return res.json({ success: 1, message: "Created successfully", data: booking });
     }
-    // console.log(bdata);
-    // return res.json({ bdata });
-    const blockedSlot = await Slot.create(blockdata);
-    bdata['booked_slot'] = blockedSlot._id;
-    console.log(bdata);
-    const booking = await Booking.create(bdata);
-    const booking_id = booking._id;
-    const payment_data = {
-        amount: parseFloat(consult_amount) * 100,
-        currency: "INR",
-        receipt: booking_id
+    if (req.user.role == "Admin") {
+        let userid;
+        if (!user_id) {
+            userid = user_id
+        } else {
+            const newuser = await User.create(user_data);
+            userid = newuser._id;
+        }
+        let petids;
+        if (!pets) {
+            const petdata = JSON.parse(pet_data);
+            petdata.map(async pd => {
+
+            })
+        }
+
     }
-    // await razorpay_instance.orders.create(payment_data, async function (err, order) {
-    //     const order_id = order.id;
-    //     const udata = {
-    //         gateway_order_id: order_id,
-    //         payment_gateway_request: order
-    //     }
-    //     const options = {
-    //         key: keyid,
-    //         amount: consult_amount, // Amount in paise
-    //         currency: "INR",
-    //         name: "Soft Hear Hearing Aid Clinic",
-    //         description: "Create Appointment",
-    //         order_id: order_id,
-    //         // handler: (response) => {
-    //         //     console.log(response);
-    //         //     alert("Payment Successful!");
-    //         // },
-    //         prefill: {
-    //             name: bookinguser.name,
-    //             email: bookinguser.email,
-    //             contact: bookinguser.mobile,
-    //         },
-    //         theme: {
-    //             color: "#F37254",
-    //         },
-    //     };
-    //     const updatedbooking = await Booking.findOneAndUpdate({ _id: booking_id }, { $set: udata }, { new: true });
-    //     return res.json({ success: 1, message: "Booking successful", data: updatedbooking, options });
-    // });
-    return res.json({ success: 1, message: "Booking successful", data: booking });
+
+
 };
 exports.get_booking = async (req, res) => {
     try {
