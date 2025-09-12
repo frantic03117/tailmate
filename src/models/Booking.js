@@ -45,7 +45,10 @@ const bookingSchema = new Schema({
         enum: ['Pet_Parent_location', 'Pet_Sitter_location'],
         default: "Pet_Sitter_location"
     },
-
+    address: String,
+    city: { type: Schema.Types.ObjectId },
+    state: { type: Schema.Types.ObjectId },
+    pincode: String,
     pet_sitter: {
         type: Schema.Types.ObjectId,
         ref: "User",

@@ -57,11 +57,13 @@ exports.create_booking = async (req, res) => {
             } else {
                 const parsedUser =
                     typeof user_data === "string" ? JSON.parse(user_data) : user_data;
-                const newUser = await User.create(parsedUser);
+                const newUser = await User.create({ ...parsedUser, role: "User" });
                 finalUserId = newUser._id;
             }
         }
-
+        if (!finalUserId) {
+            return res.json({ success: 0, message: "Pet Parent not found" });
+        }
         // Collect pet IDs
         let petIds = [];
 
@@ -129,6 +131,10 @@ exports.create_booking = async (req, res) => {
             pets: petIds.map((id) => ({ pet: id })),
             start_at,
             end_at,
+            address: req.body.address,
+            state: req.body.state,
+            city: req.body.city,
+            pincode: req.body.pincode,
             status: "Pending"
         };
 
@@ -159,9 +165,7 @@ exports.get_booking = async (req, res) => {
         if (role == "User") {
             fdata['user'] = userId
         }
-        if (role == "Clinic") {
-            fdata['clinic'] = userId
-        }
+
         if (id) {
             fdata['_id'] = id;
         }
@@ -174,18 +178,23 @@ exports.get_booking = async (req, res) => {
         const totalDocs = await Booking.countDocuments(fdata);
         const totalPages = Math.ceil(totalDocs / perPage);
         const skip = (page - 1) * perPage;
-        let bookings = await Booking.find(fdata).populate([{
-            path: 'clinic',
-            select: 'custom_request_id name mobile  address role profile_image'
-        },
-        {
-            path: "user",
-            select: 'custom_request_id name mobile gender dob address role profile_image'
-        },
-        {
-            path: "doctor",
-            select: 'custom_request_id name mobile gender dob address role profile_image'
-        }
+        let bookings = await Booking.find(fdata).populate([
+            {
+                path: 'service',
+
+            },
+            {
+                path: 'pets.pet',
+
+            },
+            {
+                path: "user",
+                select: 'custom_request_id name mobile gender dob address role profile_image'
+            },
+            {
+                path: "pet_sitter",
+                select: 'custom_request_id name mobile gender dob address role profile_image'
+            }
         ]).sort({ booking_date: -1 }).skip(skip).limit(perPage).lean();
         bookings = bookings.map(booking => ({
             ...booking,
