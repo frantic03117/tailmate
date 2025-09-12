@@ -18,7 +18,7 @@ const { createPetForUser } = require("../helper/commonHelper");
 
 exports.create_booking = async (req, res) => {
     try {
-        const userId = req.user._id;
+        // const userId = req.user._id;
         const {
             pet_sitter,
             start_at,
@@ -41,7 +41,7 @@ exports.create_booking = async (req, res) => {
             return res.status(400).json({ success: 0, message: "At least one pet is required" });
         }
 
-        let finalUserId = userId;
+        let finalUserId = req.user._id;
 
         // If admin is creating booking
         if (req.user.role === "Admin") {
@@ -62,7 +62,7 @@ exports.create_booking = async (req, res) => {
             }
         }
         if (!finalUserId) {
-            return res.json({ success: 0, message: "Pet Parent not found" });
+            return res.status(500).json({ success: 0, message: "Pet Parent not found" });
         }
         // Collect pet IDs
         let petIds = [];
@@ -112,11 +112,11 @@ exports.create_booking = async (req, res) => {
                         message: "Each pet_data item must be an object"
                     });
                 }
-
+                let userId = finalUserId;
                 const savedPet = await createPetForUser(
                     pd,
                     pd.files || [],
-                    finalUserId
+                    userId
                 );
                 petIds.push(savedPet._id);
             }

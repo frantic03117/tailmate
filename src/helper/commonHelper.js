@@ -8,7 +8,10 @@ const Pet = require("../models/Pet");
  * @returns {Promise<Object>} - saved pet
  */
 async function createPetForUser(petData, files, userId) {
-    const newPetData = { ...petData, user: userId };
+    if (!userId) {
+        return res.status(500).json({ success: 0, message: "User not found" });
+    }
+    const newPetData = { ...petData, pet_parent: userId };
 
     // attach images if uploaded
     if (files && files.length > 0) {
