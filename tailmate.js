@@ -7,9 +7,13 @@ const fs = require('fs');
 const cors = require('cors');
 require('dotenv').config();
 const options = {
-    key: fs.readFileSync('./ssl/private.pem'),
-    cert: fs.readFileSync('./ssl/certificate.pem'),
+    key: fs.readFileSync('/etc/letsencrypt/live/packarts.in/privkey.pem', 'utf8'),
+    cert: fs.readFileSync('/etc/letsencrypt/live/packarts.in/fullchain.pem', 'utf8'),
 };
+// const options = {
+//     key: fs.readFileSync('./ssl/private.pem'),
+//     cert: fs.readFileSync('./ssl/certificate.pem'),
+// };
 const server = https.createServer(options, app);
 process.env.TZ = "Asia/Kolkata";
 const mongourl = "mongodb+srv://noreplycabs24:KkhHGcKLcnzppeLk@cluster0.at7dp.mongodb.net/tailmate";
