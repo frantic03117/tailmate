@@ -85,7 +85,7 @@ const schema = new Schema({
     },
     role: {
         type: String,
-        enum: ['User', 'Pet_sitter', 'Employee', 'Admin', 'SubAdmin', 'Clinic'],
+        enum: ['User', 'Pet_sitter', 'Employee', 'Admin', 'SubAdmin'],
         default: null
     },
     roles: {
