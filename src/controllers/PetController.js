@@ -76,6 +76,9 @@ exports.getAllPets = async (req, res) => {
     try {
         const { pet_parent, name, breed, gender, type } = req.query;
         let fdata = {};
+        if (req.user.role == "User") {
+            fdata['pet_parent'] = req.user._id;
+        }
         if (pet_parent) {
             fdata['pet_parent'] = pet_parent;
         }
@@ -91,6 +94,7 @@ exports.getAllPets = async (req, res) => {
         if (type) {
             fdata['type'] = type;
         }
+
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
@@ -109,6 +113,7 @@ exports.getAllPets = async (req, res) => {
                 limit,
             },
             data: pets,
+            success: 1
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
