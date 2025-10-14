@@ -63,11 +63,7 @@ exports.getDoctorWithSpecialization = async (req, res) => {
             fdata['category'] = { $in: category.split(',') }
         }
 
-        if (req.user) {
-            if (req.user.role == "Clinic") {
-                fdata['clinic'] = req.user._id
-            }
-        }
+
         if (languagesArr.length) {
             fdata['languages'] = { $in: languagesArr };
         }

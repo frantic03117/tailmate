@@ -54,8 +54,6 @@ const bookingSchema = new Schema({
         ref: "User",
         default: null
     },
-
-
     start_at: {
         type: Date,
     },
