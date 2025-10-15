@@ -40,6 +40,10 @@ exports.create_booking = async (req, res) => {
         if ((!pets || pets.length === 0) && !pet_data) {
             return res.status(400).json({ success: 0, message: "At least one pet is required" });
         }
+        const findPetSitter = await User.findOne({ _id: pet_sitter, role: "Pet_sitter" });
+        if (!findPetSitter) {
+            return res.status(400).json({ success: 0, message: "Pet sitter not found" });
+        }
 
         let finalUserId = req.user._id;
 
@@ -128,6 +132,7 @@ exports.create_booking = async (req, res) => {
             user: finalUserId,
             mode,
             pet_sitter,
+            booking_amount_rate: findPetSitter,
             pets: petIds,
             start_at,
             end_at,
@@ -137,7 +142,7 @@ exports.create_booking = async (req, res) => {
             pincode: req.body.pincode,
             status: "Pending"
         };
-        console.log(bookingData);
+
 
         const booking = new Booking(bookingData);
         await booking.save();
@@ -185,7 +190,11 @@ exports.get_booking = async (req, res) => {
 
             },
             {
-                path: 'pets.pet'
+                path: 'pets',
+                populate: {
+                    path: "type",
+                    select: "title"
+                }
             },
             {
                 path: "user",
@@ -240,67 +249,125 @@ exports.cancel_booking = async (req, res) => {
 }
 exports.update_booking = async (req, res) => {
     try {
-        const { clinic_id, doctor_id, slot_id, booking_date, booking_id } = req.body;
-        const fdata = {
-            _id: booking_id
-        }
-        if (req.user.role == "User") {
-            fdata['user'] = req.user._id
-        }
-        const findbooking = await Booking.findOne(fdata);
-        if (!findbooking) {
-            return res.json({ success: 0, message: "Invalid booking id" });
-        }
-        const slots = await Slot.findOne({ _id: slot_id, doctor: doctor_id, status: "available" })
-            .lean();
-        if (!slots) {
-            return res.status(400).json({ success: 0, message: "Slot not available or already booked" });
-        }
-        const isBlocked = await Slot.findOne({ slot_id: slot_id, date: moment.tz(booking_date, "Asia/Kolkata").startOf("day").utc().toDate() });
-        if (isBlocked) {
-            return res.json({ success: 0, data: [], message: "This slot is already booked" });
-        }
-
-        // Extract the time part from slot and apply it to the booking_date
-        const slotStart = moment(`${booking_date} ${slots.start_time}`).tz("Asia/Kolkata").format("HH:mm");
-        const slotEnd = moment(`${booking_date} ${slots.end_time}`).tz("Asia/Kolkata").format("HH:mm");
-        const start_at = moment.tz(`${booking_date} ${slotStart}`, "YYYY-MM-DD HH:mm", "Asia/Kolkata").utc().toDate();
-        const end_at = moment.tz(`${booking_date} ${slotEnd}`, "YYYY-MM-DD HH:mm", "Asia/Kolkata").utc().toDate();
-        // return res.json({ start_at, end_at });
-        const bdata = {
-            doctor: doctor_id,
-            booking_date: moment.tz(booking_date, "Asia/Kolkata").startOf("day").utc().toDate(),
+        const {
+            _id,
+            pet_sitter,
             start_at,
             end_at,
-            duration: (end_at.getTime() - start_at.getTime()) / 60000,
-            status: "booked"
-        };
-        const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-        const parsedDate = new Date(booking_date);
-        const weekdayname = weekdays[parsedDate.getDay()];
+            mode,
+            service,
+            user_id,
+            user_data,
+            pets,
+            pet_data
+        } = req.body;
 
-        const blockdata = {
-            weekdayName: weekdayname,
-            status: "blocked",
-            clinic: clinic_id,
-            "doctor": doctor_id,
-            "slot_id": slots._id,
-            date: moment.tz(booking_date, "Asia/Kolkata").startOf("day").utc().toDate(),
-            start_time: slots.start_time,
-            end_time: slots.end_time,
-            createdAt: new Date()
+        // --- VALIDATION ---
+        if (!service) return res.status(400).json({ success: 0, message: "Service is required" });
+        if ((!pets || pets.length === 0) && !pet_data)
+            return res.status(400).json({ success: 0, message: "At least one pet is required" });
+
+        const findPetSitter = await User.findOne({ _id: pet_sitter, role: "Pet_sitter" });
+        if (!findPetSitter)
+            return res.status(400).json({ success: 0, message: "Pet sitter not found" });
+
+        // --- DETERMINE USER ---
+        let finalUserId = req.user._id;
+        if (req.user.role === "Admin") {
+            if (!user_id && !user_data) {
+                return res.status(400).json({ success: 0, message: "User is required for Admin booking" });
+            }
+            if (user_id) {
+                finalUserId = user_id;
+            } else {
+                const parsedUser = typeof user_data === "string" ? JSON.parse(user_data) : user_data;
+                const newUser = await User.create({ ...parsedUser, role: "User" });
+                finalUserId = newUser._id;
+            }
         }
-        // console.log(bdata);
-        // return res.json({ bdata });
-        await Slot.deleteOne({ _id: findbooking.booked_slot });
-        const blockedSlot = await Slot.create(blockdata);
-        bdata['booked_slot'] = blockedSlot._id;
-        const new_booking = await Booking.findOneAndUpdate({ _id: booking_id }, { $set: bdata }, { new: true }).populate('booked_slot');
-        return res.json({ success: 1, message: "Booking updated successfully", data: new_booking })
-    } catch (err) {
-        return res.json({ success: 0, message: err.message })
+
+        if (!finalUserId)
+            return res.status(500).json({ success: 0, message: "Pet Parent not found" });
+
+        // --- COLLECT PET IDs ---
+        let petIds = [];
+
+        if (pets) {
+            const parsedPets = typeof pets === "string" ? JSON.parse(pets) : pets;
+            if (Array.isArray(parsedPets) && parsedPets.length > 0) petIds = parsedPets;
+        }
+
+        // --- HANDLE NEW PET CREATION ---
+        if (pet_data) {
+            let parsedPetData;
+            try {
+                parsedPetData = typeof pet_data === "string" ? JSON.parse(pet_data) : pet_data;
+            } catch {
+                return res.status(400).json({ success: 0, message: "Invalid pet_data JSON" });
+            }
+
+            if (!Array.isArray(parsedPetData))
+                return res.status(400).json({ success: 0, message: "pet_data must be an array" });
+
+            if (req.files && req.files.length > 0) {
+                parsedPetData.forEach((pd, idx) => {
+                    const filesForPet = req.files.filter(f => f.fieldname.startsWith(`pet_files_${idx}_`));
+                    pd.files = filesForPet;
+                });
+            }
+
+            for (const pd of parsedPetData) {
+                if (typeof pd !== "object")
+                    return res.status(400).json({ success: 0, message: "Each pet_data item must be an object" });
+
+                const savedPet = await createPetForUser(pd, pd.files || [], finalUserId);
+                petIds.push(savedPet._id);
+            }
+        }
+
+        // --- BOOKING DATA ---
+        const bookingData = {
+            service,
+            user: finalUserId,
+            mode,
+            pet_sitter,
+            pets: petIds,
+            start_at,
+            end_at,
+            address: req.body.address,
+            state: req.body.state,
+            city: req.body.city,
+            pincode: req.body.pincode,
+            status: "Pending"
+        };
+
+        let booking;
+        if (_id) {
+            booking = await Booking.findByIdAndUpdate(_id, bookingData, {
+                new: true,
+            }).populate([
+                { path: "service" },
+                { path: "pets", populate: { path: "type" } },
+            ]);
+            if (!booking) {
+                return res.status(404).json({ success: 0, message: "Booking not found" });
+            }
+        } else {
+            booking = new Booking(bookingData);
+            await booking.save();
+        }
+
+        return res.status(200).json({
+            success: 1,
+            message: _id ? "Booking updated successfully" : "Booking created successfully",
+            data: booking,
+        });
+    } catch (error) {
+        console.error("Booking update error:", error);
+        return res.status(500).json({ success: 0, message: error.message || "Server error" });
     }
-}
+};
+
 exports.update_payment_status = async (req, res) => {
     try {
         const { orderId } = req.params;

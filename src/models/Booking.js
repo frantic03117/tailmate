@@ -57,6 +57,9 @@ const bookingSchema = new Schema({
     start_at: {
         type: Date,
     },
+    booking_amount_rate: {
+        type: Schema.Types.Mixed
+    },
     end_at: {
         type: Date,
     },
