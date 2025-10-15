@@ -132,7 +132,7 @@ exports.create_booking = async (req, res) => {
             user: finalUserId,
             mode,
             pet_sitter,
-            booking_amount_rate: findPetSitter,
+            booking_amount_rate: findPetSitter.category_fee,
             pets: petIds,
             start_at,
             end_at,
@@ -187,10 +187,12 @@ exports.get_booking = async (req, res) => {
         let bookings = await Booking.find(fdata).populate([
             {
                 path: 'service',
+                select: "title"
 
             },
             {
                 path: 'pets',
+                select: "name type age gender weight",
                 populate: {
                     path: "type",
                     select: "title"
@@ -205,12 +207,34 @@ exports.get_booking = async (req, res) => {
                 select: 'custom_request_id name mobile gender dob address role profile_image'
             }
         ]).sort({ booking_date: -1 }).skip(skip).limit(perPage).lean();
-        bookings = bookings.map(booking => ({
-            ...booking,
-            start_at: moment.utc(booking.start_at).tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss"),
-            end_at: moment.utc(booking.end_at).tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss"),
-            booking_date: moment.utc(booking.booking_date).tz("Asia/Kolkata").format("YYYY-MM-DD")
-        }));
+        bookings = bookings.map(booking => {
+            // Convert dates to IST string format
+            const start_at = moment.utc(booking.start_at).tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss");
+            const end_at = moment.utc(booking.end_at).tz("Asia/Kolkata").format("YYYY-MM-DD HH:mm:ss");
+            const booking_date = moment.utc(booking.booking_date).tz("Asia/Kolkata").format("YYYY-MM-DD");
+
+            // Calculate number of days (inclusive)
+            const days = moment(end_at).diff(moment(start_at), "days") + 1;
+
+            const rates = booking.booking_amount_rate ?? [];
+
+            let booking_amount = 0;
+            booking.pets.forEach(pet => {
+                const service_type = booking.service?._id;
+                const petType = pet.type?._id?.toString();
+                const amountPerDay = rates.find(obj => obj.category == service_type.toString() && obj.fee_type?.toString() == petType)?.fee || 0;
+                booking_amount += amountPerDay * days;
+            });
+
+            return {
+                ...booking,
+                start_at,
+                end_at,
+                booking_date,
+                booking_amount
+            };
+        });
+
         const pagination = { perPage, page, totalPages, totalDocs };
         return res.json({ success: 1, message: "List of bookings", data: bookings, pagination, fdata });
     } catch (err) {
@@ -328,18 +352,20 @@ exports.update_booking = async (req, res) => {
         // --- BOOKING DATA ---
         const bookingData = {
             service,
-            user: finalUserId,
+            // user: finalUserId,
             mode,
             pet_sitter,
+            booking_amount_rate: findPetSitter.category_fee,
             pets: petIds,
             start_at,
             end_at,
-            address: req.body.address,
-            state: req.body.state,
-            city: req.body.city,
-            pincode: req.body.pincode,
-            status: "Pending"
+            // address: req.body.address,
+            // state: req.body.state,
+            // city: req.body.city,
+            // pincode: req.body.pincode,
+
         };
+        console.log(bookingData)
 
         let booking;
         if (_id) {
@@ -352,9 +378,6 @@ exports.update_booking = async (req, res) => {
             if (!booking) {
                 return res.status(404).json({ success: 0, message: "Booking not found" });
             }
-        } else {
-            booking = new Booking(bookingData);
-            await booking.save();
         }
 
         return res.status(200).json({

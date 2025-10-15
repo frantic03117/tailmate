@@ -57,9 +57,23 @@ const bookingSchema = new Schema({
     start_at: {
         type: Date,
     },
-    booking_amount_rate: {
-        type: Schema.Types.Mixed
-    },
+    booking_amount_rate: [{
+        category: {
+            type: Schema.Types.ObjectId,
+            ref: "Setting",
+            required: true
+        },
+        fee_type: {
+            type: Schema.Types.ObjectId,
+            ref: "PetType",
+            required: true
+        },
+        fee: {
+            type: Number,
+            required: true,
+            min: 0
+        }
+    }],
     end_at: {
         type: Date,
     },
