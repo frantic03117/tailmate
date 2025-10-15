@@ -27,7 +27,7 @@ exports.createPet = async (req, res) => {
             userId = req.user._id;
         }
         if (req.user.role == "Admin") {
-            userId = req.body.user;
+            userId = req.body.user || req.body.pet_parent;
         }
         if (req.files && req.files.length > 0) {
             petData.pet_images = req.files.map(file => file.path); // store file paths
