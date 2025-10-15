@@ -9,7 +9,7 @@ const Pet = require("../models/Pet");
  */
 async function createPetForUser(petData, files, userId) {
     if (!userId) {
-        return res.status(500).json({ success: 0, message: "User not found" });
+        throw new Error("User not found");
     }
     const newPetData = { ...petData, pet_parent: userId };
 

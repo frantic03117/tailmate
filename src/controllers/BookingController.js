@@ -184,10 +184,7 @@ exports.get_booking = async (req, res) => {
 
             },
             {
-                path: 'pets.pet',
-                populate: {
-                    path: 'type'
-                },
+                path: 'pets.pet'
             },
             {
                 path: "user",

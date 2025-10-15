@@ -60,7 +60,10 @@ const bookingSchema = new Schema({
     end_at: {
         type: Date,
     },
-    pets: [PetsSchema],
+    pets: [{
+        type: Schema.Types.ObjectId,
+        ref: "Pet"
+    }],
     status: {
         type: String,
         enum: ["Success", "Pending", "Cancelled"],
