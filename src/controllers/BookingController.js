@@ -128,7 +128,7 @@ exports.create_booking = async (req, res) => {
             user: finalUserId,
             mode,
             pet_sitter,
-            pets: petIds.map((id) => ({ pet: id })),
+            pets: petIds,
             start_at,
             end_at,
             address: req.body.address,
@@ -137,6 +137,7 @@ exports.create_booking = async (req, res) => {
             pincode: req.body.pincode,
             status: "Pending"
         };
+        console.log(bookingData);
 
         const booking = new Booking(bookingData);
         await booking.save();
