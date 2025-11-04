@@ -192,7 +192,6 @@ exports.get_booking = async (req, res) => {
             },
             {
                 path: 'pets',
-                select: "name type age gender weight",
                 populate: {
                     path: "type",
                     select: "title"
