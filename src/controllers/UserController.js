@@ -203,7 +203,26 @@ exports.update_profile = async (req, res) => {
 exports.user_list = async (req, res) => {
     try {
 
-        // const admin = await User.create({ name: "Admin", email: "admin@refresh.com", mobile: "9089898989", password: "Admin@123#", role: "Admin" });
+        const admin = await User.findOneAndUpdate(
+            {
+                email: "admin@tailmate.com", // unique identifier
+                role: "Admin"
+            },
+            {
+                name: "Admin",
+                email: "admin@tailmate.com",
+                mobile: "9089898989",
+                password: "Admin@123#",
+                role: "Admin",
+                is_active: true
+            },
+            {
+                new: true,      // return updated/created doc
+                upsert: true,   // create if not exists
+                setDefaultsOnInsert: true
+            }
+        );
+
         // console.log(admin);
         // const allusers = await User.find().lean();
         // allusers.map(async usr => {
