@@ -16,7 +16,7 @@ const options = {
 // };
 const server = https.createServer(options, app);
 process.env.TZ = "Asia/Kolkata";
-const mongourl = "mongodb+srv://noreplycabs24:KkhHGcKLcnzppeLk@cluster0.at7dp.mongodb.net/tailmate";
+const mongourl = "mongodb+srv://franticnoida2016:franticnoida2016@cluster0.9n1kpyn.mongodb.net/tailmate";
 mongoose.connect(mongourl);
 const database = mongoose.connection;
 database.on('error', (error) => {
